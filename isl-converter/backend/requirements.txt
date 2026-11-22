@@ -1,0 +1,5 @@
+flask>=3.0
+pillow>=10.0
+numpy>=1.26
+tensorflow>=2.16      # Keras 3 is needed to load .keras files saved by TF 2.16+ (your notebook used 2.20)
+deep-translator>=1.11

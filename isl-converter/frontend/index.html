@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign to Text: Indian Sign Language Converter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eef1f4; --panel:#ffffff; --ink:#14213d; --muted:#5b6678; --line:#d5dbe3;
+  --accent:#0f766e; --accent-ink:#ffffff; --signal:#e8a317; --bad:#b42318; --stage:#0d1626;
+  --font:"Hind","Noto Sans Devanagari","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#0b1220;--panel:#131d31;--ink:#e8edf5;--muted:#9aa7bb;--line:#26324a;--accent:#2dd4bf;--accent-ink:#06201d;--stage:#060b14;--bad:#f97066}
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:17px;line-height:1.5}
+.wrap{max-width:1120px;margin:0 auto;padding:20px 16px 40px}
+header{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+h1{font-size:26px;margin:0;font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0}
+#model{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:8px}
+#model i{width:9px;height:9px;border-radius:50%;background:var(--signal);display:inline-block}
+#model.ready i{background:var(--accent)} #model.error i{background:var(--bad)}
+main{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px}
+@media (max-width:860px){main{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+h2{font-size:17px;margin:0 0 10px;font-weight:600}
+
+/* camera stage */
+.stage{position:relative;background:var(--stage);border-radius:14px;overflow:hidden;aspect-ratio:4/3;border:3px solid var(--line);transition:border-color .2s}
+.stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+.stage[data-state="DETECTING"]{border-color:var(--signal)}
+.stage[data-state="STABLE"]{border-color:var(--signal)}
+.stage[data-state="ACCEPTED"],.stage[data-state="LOCKED"]{border-color:var(--accent)}
+.idle{position:absolute;inset:0;display:grid;place-content:center;text-align:center;color:#c9d3e3;padding:24px;gap:6px}
+.idle strong{font-size:20px;color:#fff}
+.sign{position:absolute;left:14px;bottom:14px;min-width:92px;height:92px;padding:0 16px;border-radius:14px;background:rgba(6,11,20,.78);color:#fff;display:grid;place-items:center;font-size:56px;font-weight:700;line-height:1}
+.sign.pulse{animation:pop .45s ease}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.14);background:var(--accent)}100%{transform:scale(1)}}
+.state{position:absolute;top:12px;left:12px;background:rgba(6,11,20,.78);color:#fff;border-radius:999px;padding:3px 12px;font-size:14px;font-weight:500}
+.msg{min-height:3em;margin:10px 0 6px}
+.meter{height:10px;background:var(--line);border-radius:6px;position:relative;overflow:hidden}
+.meter b{position:absolute;inset:0 auto 0 0;width:0;background:var(--accent);transition:width .15s}
+.meter u{position:absolute;top:0;bottom:0;width:2px;background:var(--ink);opacity:.7}
+.meta{display:flex;justify-content:space-between;color:var(--muted);font-size:14px;margin-top:4px;gap:8px;flex-wrap:wrap}
+.dots{display:flex;gap:5px}.dots span{width:10px;height:10px;border-radius:50%;background:var(--line)}.dots span.on{background:var(--accent)}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+button{font:inherit;font-weight:600;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:9px 16px;cursor:pointer;min-height:44px}
+button:hover:not(:disabled){border-color:var(--accent)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+
+/* text output */
+.out{font-size:34px;line-height:1.35;min-height:150px;padding:12px 14px;border-radius:10px;background:var(--bg);border:1px dashed var(--line);word-break:break-word}
+.out.empty{color:var(--muted);font-size:18px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px}
+.chip{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:6px 14px;cursor:pointer;min-height:40px}
+.chip input{accent-color:var(--accent);width:16px;height:16px}
+.chip:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.tr{border-top:1px solid var(--line);padding:10px 0}
+.tr:first-child{border-top:0}
+.tr h3{margin:0 0 2px;font-size:14px;color:var(--muted);font-weight:500}
+.tr p{margin:0 0 6px;font-size:22px}
+.tr p.err{color:var(--bad);font-size:16px}
+.tr button{padding:4px 12px;min-height:36px;font-size:14px}
+.top{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;color:var(--muted);font-size:14px}
+.top span{border:1px solid var(--line);border-radius:8px;padding:1px 10px}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:10px;font-size:15px;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Sign to Text</h1>
+      <p class="sub">Show a sign to the camera and read it as text in English, Hindi or Marathi.</p>
+    </div>
+    <div id="model"><i></i><span>Checking model…</span></div>
+  </header>
+
+  <main>
+    <section class="card" aria-label="Camera">
+      <div class="stage" id="stage" data-state="WAITING">
+        <video id="video" playsinline muted></video>
+        <canvas id="overlay"></canvas>
+        <div class="idle" id="idle">
+          <strong>Camera is off</strong>
+          <span>Press Start camera and keep one hand in view, about an arm’s length away.</span>
+        </div>
+        <div class="state" id="state" hidden>Waiting</div>
+        <div class="sign" id="sign" aria-live="polite">–</div>
+      </div>
+      <p class="msg" id="msg" aria-live="polite">Start the camera to begin.</p>
+      <div class="meter" aria-hidden="true"><b id="conf"></b><u id="thr" style="left:70%"></u></div>
+      <div class="meta"><span id="confTxt">Confidence 0%</span><span class="dots" id="dots" aria-label="Frames read"></span></div>
+      <div class="top" id="top"></div>
+      <div class="row">
+        <button class="primary" id="startBtn">Start camera</button>
+      </div>
+    </section>
+
+    <section class="card" aria-label="Recognised text">
+      <h2>Recognised text</h2>
+      <div class="out empty" id="out" lang="mr">Letters you sign will appear here.</div>
+      <div class="row">
+        <button id="spaceBtn">Space</button>
+        <button id="backBtn">Delete last</button>
+        <button id="clearBtn">Clear all</button>
+      </div>
+
+      <h2 style="margin-top:22px">Translate</h2>
+      <div class="chips" id="chips"></div>
+      <div class="row" style="margin-top:0">
+        <button class="primary" id="trBtn" disabled>Translate text</button>
+      </div>
+      <div id="results"></div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
+<script>
+const $ = id => document.getElementById(id);
+const SESSION = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)).slice(0, 36);
+const SPEECH = {en:"en-IN", hi:"hi-IN", mr:"mr-IN"};
+const FRAME_MS = 110;
+let running = false, hands = null, landmarks = null, stream = null, latest = {text:""};
+const grab = document.createElement("canvas");
+
+function toast(t){ const el=$("toast"); el.textContent=t; el.classList.add("show"); clearTimeout(toast.t); toast.t=setTimeout(()=>el.classList.remove("show"),2200); }
+async function post(url, body={}){
+  const r = await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session:SESSION,...body})});
+  const j = await r.json().catch(()=>({})); if(!r.ok) throw new Error(j.error||"Request failed"); return j;
+}
+
+/* ---------- model status + languages ---------- */
+async function loadInfo(){
+  try{
+    const info = await (await fetch("/api/info")).json();
+    const m = info.model || {}, el = $("model");
+    el.className = m.state==="ready" ? "ready" : (m.state==="error" ? "error" : "");
+    el.querySelector("span").textContent = m.state==="ready" ? "Model ready" : (m.state==="error" ? "Model failed to load" : "Loading recognition model…");
+    if(!$("chips").children.length){
+      Object.entries(info.languages||{en:"English",hi:"Hindi",mr:"Marathi"}).forEach(([code,name])=>{
+        const l=document.createElement("label"); l.className="chip";
+        l.innerHTML='<input type="checkbox" value="'+code+'"'+(code!=="mr"?" checked":"")+'><span></span>';
+        l.querySelector("span").textContent=name; $("chips").appendChild(l);
+      });
+    }
+    if(m.state==="loading") setTimeout(loadInfo,1500);
+  }catch(e){ $("model").className="error"; $("model").querySelector("span").textContent="Server not reachable"; setTimeout(loadInfo,3000); }
+}
+
+/* ---------- camera + hand detection ---------- */
+function setupHands(){
+  hands = new Hands({locateFile: f => "https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/"+f});
+  hands.setOptions({maxNumHands:1, modelComplexity:1, minDetectionConfidence:.6, minTrackingConfidence:.5});
+  hands.onResults(res => { landmarks = (res.multiHandLandmarks && res.multiHandLandmarks[0]) || null; });
+}
+function bboxOf(lm){
+  const xs=lm.map(p=>p.x), ys=lm.map(p=>p.y), c=v=>Math.min(1,Math.max(0,v));
+  let x0=c(Math.min(...xs)), x1=c(Math.max(...xs)), y0=c(Math.min(...ys)), y1=c(Math.max(...ys));
+  if(x1-x0<.01) x1=Math.min(1,x0+.01); if(y1-y0<.01) y1=Math.min(1,y0+.01);
+  return [x0,y0,x1,y1];
+}
+function drawBox(box){
+  const v=$("video"), o=$("overlay"); o.width=v.videoWidth||640; o.height=v.videoHeight||480;
+  const g=o.getContext("2d"); g.clearRect(0,0,o.width,o.height); if(!box) return;
+  g.strokeStyle="#2dd4bf"; g.lineWidth=4; g.strokeRect(box[0]*o.width,box[1]*o.height,(box[2]-box[0])*o.width,(box[3]-box[1])*o.height);
+}
+async function startCamera(){
+  try{
+    $("startBtn").disabled=true;
+    if(!hands) setupHands();
+    stream = await navigator.mediaDevices.getUserMedia({video:{width:{ideal:640},height:{ideal:480},facingMode:"user"},audio:false});
+    const v=$("video"); v.srcObject=stream; await v.play();
+    $("idle").hidden=true; $("state").hidden=false;
+    await post("/api/resume").then(render).catch(()=>{});
+    running=true; $("startBtn").textContent="Stop camera"; $("startBtn").classList.remove("primary"); $("startBtn").disabled=false;
+    tick();
+  }catch(e){
+    $("startBtn").disabled=false;
+    $("msg").textContent = e.name==="NotAllowedError" ? "Camera access was blocked. Allow the camera in your browser’s address bar, then press Start camera." : "Could not start the camera: "+e.message;
+  }
+}
+function stopCamera(){
+  running=false; if(stream) stream.getTracks().forEach(t=>t.stop()); stream=null; drawBox(null);
+  $("idle").hidden=false; $("state").hidden=true; $("startBtn").textContent="Start camera"; $("startBtn").classList.add("primary");
+  $("msg").textContent="Camera stopped. Your text is kept."; $("stage").dataset.state="WAITING";
+}
+async function tick(){
+  if(!running) return; const t0=performance.now();
+  try{
+    await hands.send({image:$("video")});
+    const box = landmarks ? bboxOf(landmarks) : null; drawBox(box);
+    const fd = new FormData(); fd.append("session",SESSION); fd.append("hand",box?"1":"0");
+    if(box){
+      const v=$("video"), w=Math.min(480,v.videoWidth), h=Math.round(w*v.videoHeight/v.videoWidth);
+      grab.width=w; grab.height=h; grab.getContext("2d").drawImage(v,0,0,w,h);
+      const blob = await new Promise(r=>grab.toBlob(r,"image/jpeg",.85));
+      fd.append("frame",blob,"frame.jpg"); fd.append("bbox",box.join(","));
+    }
+    const r = await fetch("/api/frame",{method:"POST",body:fd});
+    const j = await r.json();
+    if(r.ok) render(j); else $("msg").textContent = j.error || "The server could not read this frame.";
+  }catch(e){ $("msg").textContent="Connection problem. Check that the server is running."; }
+  if(running) setTimeout(tick, Math.max(0,FRAME_MS-(performance.now()-t0)));
+}
+
+/* ---------- render a recognizer snapshot ---------- */
+const STATE_LABEL={WAITING:"Waiting for a hand",DETECTING:"Reading sign",STABLE:"Steady, not sure yet",ACCEPTED:"Added",LOCKED:"Locked"};
+function render(s){
+  if(!s) return;
+  $("stage").dataset.state=s.state; $("state").textContent=STATE_LABEL[s.state]||s.state;
+  const sign=$("sign"); sign.textContent = (s.state==="WAITING"||!s.current_sign) ? "–" : s.current_sign;
+  if(s.event==="accepted"){ sign.classList.remove("pulse"); void sign.offsetWidth; sign.classList.add("pulse"); }
+  $("msg").textContent=s.message||"";
+  const pct=Math.round((s.confidence||0)*100); $("conf").style.width=pct+"%"; $("thr").style.left=Math.round((s.threshold_used||s.threshold||.7)*100)+"%";
+  $("confTxt").textContent="Confidence "+pct+"% (needs "+Math.round((s.threshold_used||s.threshold||.7)*100)+"%)";
+  $("dots").innerHTML=""; for(let i=0;i<(s.window_size||6);i++){ const d=document.createElement("span"); if(i<(s.window_fill||0)) d.className="on"; $("dots").appendChild(d); }
+  $("top").innerHTML=""; (s.top||[]).slice(0,3).forEach(([l,p])=>{ const e=document.createElement("span"); e.textContent=l+" "+Math.round(p*100)+"%"; $("top").appendChild(e); });
+  setText(s.text||"");
+}
+function setText(t){
+  latest.text=t; const o=$("out");
+  o.textContent = t || "Letters you sign will appear here."; o.classList.toggle("empty",!t);
+  $("trBtn").disabled=!t.trim();
+}
+
+/* ---------- buttons ---------- */
+$("startBtn").onclick = () => running ? stopCamera() : startCamera();
+for(const [id,url] of [["spaceBtn","/api/space"],["backBtn","/api/backspace"],["clearBtn","/api/clear"]]){
+  $(id).onclick = async()=>{ try{ const s=await post(url); setText(s.text||""); if(url.endsWith("clear")) $("results").innerHTML=""; }catch(e){ toast(e.message); } };
+}
+$("trBtn").onclick = async()=>{
+  const targets=[...$("chips").querySelectorAll("input:checked")].map(i=>i.value);
+  if(!targets.length){ toast("Choose at least one language."); return; }
+  $("trBtn").disabled=true; $("trBtn").textContent="Translating…";
+  try{
+    const j = await post("/api/translate",{text:latest.text,targets});
+    const names={}; $("chips").querySelectorAll("label").forEach(l=>names[l.querySelector("input").value]=l.textContent.trim());
+    $("results").innerHTML="";
+    targets.forEach(code=>{
+      const r=j.translations[code]||{}, d=document.createElement("div"); d.className="tr";
+      const h=document.createElement("h3"); h.textContent=names[code]||code; const p=document.createElement("p");
+      d.append(h,p);
+      if(r.text!=null){
+        p.textContent=r.text; p.lang=code;
+        const c=document.createElement("button"); c.textContent="Copy"; c.onclick=()=>navigator.clipboard.writeText(r.text).then(()=>toast("Copied"));
+        const s=document.createElement("button"); s.textContent="Listen"; s.style.marginLeft="6px";
+        s.onclick=()=>{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(r.text); u.lang=SPEECH[code]||code; speechSynthesis.speak(u); };
+        d.append(c,s);
+      } else { p.className="err"; p.textContent=r.error||"Translation failed."; }
+      $("results").appendChild(d);
+    });
+  }catch(e){ toast(e.message); }
+  $("trBtn").textContent="Translate text"; $("trBtn").disabled=!latest.text.trim();
+};
+
+/* keyboard: Backspace deletes the last letter when focus is not on a control */
+document.addEventListener("keydown",e=>{ if(e.code==="Backspace"&&e.target===document.body){ e.preventDefault(); $("backBtn").click(); } });
+loadInfo();
+</script>
+</body>
+</html>
