@@ -3,128 +3,304 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f97316">
 <title>Sign to Text: Indian Sign Language Converter</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#eef1f4; --panel:#ffffff; --ink:#14213d; --muted:#5b6678; --line:#d5dbe3;
-  --accent:#0f766e; --accent-ink:#ffffff; --signal:#e8a317; --bad:#b42318; --stage:#0d1626;
-  --font:"Hind","Noto Sans Devanagari","Segoe UI",system-ui,sans-serif;
+  --bg:#fffaf5; --panel:#ffffff; --ink:#2a1408; --muted:#7a5c46; --line:#f2e0d0; --soft:#fff1e4;
+  --accent:#f97316; --accent-2:#fb923c; --accent-text:#c2410c; --accent-ink:#2a1408;
+  --good:#10b981; --signal:#f97316; --bad:#dc2626; --stage:#1a0f08;
+  --shadow:0 1px 2px rgba(90,40,10,.06),0 8px 24px rgba(90,40,10,.08);
+  --font:"Inter","Hind","Noto Sans Devanagari","Segoe UI",system-ui,sans-serif;
+  --deva:"Noto Sans Devanagari","Hind","Inter",sans-serif;
+  --out-size:40px;
 }
 @media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){--bg:#0b1220;--panel:#131d31;--ink:#e8edf5;--muted:#9aa7bb;--line:#26324a;--accent:#2dd4bf;--accent-ink:#06201d;--stage:#060b14;--bad:#f97066}
+  :root{
+    --bg:#16100b; --panel:#1f1610; --ink:#fdf1e7; --muted:#c9ad98; --line:#3a2a1e; --soft:#2a1d14;
+    --accent:#fb923c; --accent-2:#fdba74; --accent-text:#fdba74; --accent-ink:#2a1408;
+    --good:#34d399; --signal:#fb923c; --bad:#f87171; --stage:#0d0805;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+/* high contrast switch (header button) */
+html[data-contrast="high"]{
+  --bg:#ffffff; --panel:#ffffff; --ink:#000000; --muted:#1a1a1a; --line:#000000; --soft:#f2f2f2;
+  --accent:#9a3412; --accent-2:#9a3412; --accent-text:#7c2d12; --accent-ink:#ffffff; --good:#006400; --signal:#9a3412; --bad:#a00000;
+  --shadow:none;
+}
+html[data-contrast="high"] .card,html[data-contrast="high"] button,html[data-contrast="high"] .chip{border-width:2px}
+html[data-contrast="high"] .out{border:2px solid #000;background:#fff}
+@media (prefers-color-scheme:dark){
+  html[data-contrast="high"]{--bg:#000; --panel:#000; --ink:#fff; --muted:#e6e6e6; --line:#fff; --soft:#0d0d0d;
+    --accent:#ffb27a; --accent-2:#ffb27a; --accent-text:#ffb27a; --accent-ink:#000; --good:#6ee7a0; --signal:#ffb27a; --bad:#ff8a8a}
 }
 *{box-sizing:border-box}
 html,body{margin:0}
-body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:17px;line-height:1.5}
-.wrap{max-width:1120px;margin:0 auto;padding:20px 16px 40px}
-header{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-h1{font-size:26px;margin:0;font-weight:700;letter-spacing:-.01em}
-.sub{color:var(--muted);margin:0}
-#model{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:8px}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+[hidden]{display:none!important}
+.skip{position:absolute;left:-999px;top:8px;background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;z-index:60}
+.skip:focus{left:8px}
+
+/* ---------- app bar (calm, like Translate) ---------- */
+.appbar{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--panel) 90%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.appbar-in{max-width:1200px;margin:0 auto;padding:10px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.logo{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;font-size:23px;color:#fff;flex:none;
+  background:linear-gradient(135deg,#fb923c,#f97316 55%,#ea580c)}
+h1{font-size:20px;line-height:1.15;margin:0;font-weight:700;letter-spacing:-.01em}
+.brand-t span{display:block;color:var(--muted);font-size:13px;font-family:var(--deva)}
+.tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#model{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--muted);
+  padding:6px 12px;border-radius:999px;background:var(--soft);border:1px solid var(--line)}
 #model i{width:9px;height:9px;border-radius:50%;background:var(--signal);display:inline-block}
-#model.ready i{background:var(--accent)} #model.error i{background:var(--bad)}
-main{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px}
-@media (max-width:860px){main{grid-template-columns:1fr}}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
-h2{font-size:17px;margin:0 0 10px;font-weight:600}
+#model.ready i{background:var(--good);box-shadow:0 0 0 3px color-mix(in srgb,var(--good) 25%,transparent)}
+#model.error i{background:var(--bad)}
+.tools button{min-height:36px;padding:4px 12px;font-size:14px;border-radius:10px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel)}
+.seg button{border:0;border-radius:0;min-width:44px}
+.seg button+button{border-left:1px solid var(--line)}
 
-/* camera stage */
-.stage{position:relative;background:var(--stage);border-radius:14px;overflow:hidden;aspect-ratio:4/3;border:3px solid var(--line);transition:border-color .2s}
+/* ---------- layout ---------- */
+.wrap{max-width:1200px;margin:0 auto;padding:20px 18px 40px}
+main{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){main{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:var(--shadow)}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px;flex-wrap:wrap}
+h2{font-size:17px;margin:0;font-weight:700}
+.badge{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-family:var(--deva)}
+.stack{display:flex;flex-direction:column;gap:20px;min-width:0}
+
+/* ---------- camera ---------- */
+.stage{position:relative;background:var(--stage);border-radius:16px;overflow:hidden;aspect-ratio:4/3;
+  border:3px solid var(--line);transition:border-color .2s,box-shadow .2s}
 .stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
-.stage[data-state="DETECTING"]{border-color:var(--signal)}
-.stage[data-state="STABLE"]{border-color:var(--signal)}
-.stage[data-state="ACCEPTED"],.stage[data-state="LOCKED"]{border-color:var(--accent)}
-.idle{position:absolute;inset:0;display:grid;place-content:center;text-align:center;color:#c9d3e3;padding:24px;gap:6px}
+.stage[data-state="DETECTING"],.stage[data-state="STABLE"]{border-color:var(--signal);box-shadow:0 0 0 4px color-mix(in srgb,var(--signal) 22%,transparent)}
+.stage[data-state="ACCEPTED"],.stage[data-state="LOCKED"]{border-color:var(--good);box-shadow:0 0 0 4px color-mix(in srgb,var(--good) 24%,transparent)}
+.idle{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;text-align:center;color:#f6e3d3;padding:24px;gap:8px;
+  background:radial-gradient(circle at 50% 35%,#4a2a14 0,var(--stage) 70%)}
+.idle .big{font-size:50px;line-height:1}
 .idle strong{font-size:20px;color:#fff}
-.sign{position:absolute;left:14px;bottom:14px;min-width:92px;height:92px;padding:0 16px;border-radius:14px;background:rgba(6,11,20,.78);color:#fff;display:grid;place-items:center;font-size:56px;font-weight:700;line-height:1}
+.idle span{max-width:34ch;font-size:15px}
+.tips{list-style:none;margin:8px 0 0;padding:0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.tips li{font-size:13px;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:#fbe9d9}
+.state{position:absolute;top:12px;left:12px;background:rgba(26,15,8,.8);backdrop-filter:blur(6px);color:#fff;
+  border-radius:999px;padding:5px 14px;font-size:14px;font-weight:600;border:1px solid rgba(255,255,255,.18)}
+/* current sign tile with a confidence ring (ring is filled by the small script at the bottom) */
+.signbox{--p:0;--ring:var(--signal);position:absolute;left:14px;bottom:14px;padding:5px;border-radius:24px;
+  background:conic-gradient(var(--ring) calc(var(--p) * 1%),rgba(255,255,255,.22) 0)}
+.signbox[data-ok="1"]{--ring:var(--good)}
+.idle:not([hidden]) ~ .signbox{display:none}
+.sign{min-width:92px;height:92px;padding:0 18px;border-radius:19px;background:rgba(26,15,8,.92);color:#fff;display:grid;place-items:center;
+  font-family:var(--deva);font-size:56px;font-weight:700;line-height:1}
 .sign.pulse{animation:pop .45s ease}
-@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.14);background:var(--accent)}100%{transform:scale(1)}}
-.state{position:absolute;top:12px;left:12px;background:rgba(6,11,20,.78);color:#fff;border-radius:999px;padding:3px 12px;font-size:14px;font-weight:500}
-.msg{min-height:3em;margin:10px 0 6px}
-.meter{height:10px;background:var(--line);border-radius:6px;position:relative;overflow:hidden}
-.meter b{position:absolute;inset:0 auto 0 0;width:0;background:var(--accent);transition:width .15s}
-.meter u{position:absolute;top:0;bottom:0;width:2px;background:var(--ink);opacity:.7}
-.meta{display:flex;justify-content:space-between;color:var(--muted);font-size:14px;margin-top:4px;gap:8px;flex-wrap:wrap}
-.dots{display:flex;gap:5px}.dots span{width:10px;height:10px;border-radius:50%;background:var(--line)}.dots span.on{background:var(--accent)}
-.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-button{font:inherit;font-weight:600;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:9px 16px;cursor:pointer;min-height:44px}
-button:hover:not(:disabled){border-color:var(--accent)}
-button:disabled{opacity:.45;cursor:not-allowed}
-button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-button:focus-visible,input:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.12);background:var(--good)}100%{transform:scale(1)}}
+.msg{min-height:3em;margin:14px 0 4px;padding:10px 14px;border-radius:12px;background:var(--soft);font-weight:500}
 
-/* text output */
-.out{font-size:34px;line-height:1.35;min-height:150px;padding:12px 14px;border-radius:10px;background:var(--bg);border:1px dashed var(--line);word-break:break-word}
-.out.empty{color:var(--muted);font-size:18px}
-.chips{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px}
-.chip{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:6px 14px;cursor:pointer;min-height:40px}
-.chip input{accent-color:var(--accent);width:16px;height:16px}
-.chip:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
-.tr{border-top:1px solid var(--line);padding:10px 0}
-.tr:first-child{border-top:0}
-.tr h3{margin:0 0 2px;font-size:14px;color:var(--muted);font-weight:500}
-.tr p{margin:0 0 6px;font-size:22px}
-.tr p.err{color:var(--bad);font-size:16px}
-.tr button{padding:4px 12px;min-height:36px;font-size:14px}
-.top{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;color:var(--muted);font-size:14px}
-.top span{border:1px solid var(--line);border-radius:8px;padding:1px 10px}
-.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:10px;font-size:15px;opacity:0;pointer-events:none;transition:opacity .2s}
+/* ---------- buttons ---------- */
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+button{font:inherit;font-weight:600;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);
+  padding:10px 16px;cursor:pointer;min-height:46px;transition:transform .08s,border-color .15s,box-shadow .15s;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+button:hover:not(:disabled){border-color:var(--accent)}
+button:active:not(:disabled){transform:translateY(1px)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:linear-gradient(120deg,var(--accent),var(--accent-2));color:var(--accent-ink);border-color:transparent;box-shadow:0 6px 16px rgba(249,115,22,.35)}
+button.primary:hover:not(:disabled){border-color:transparent;box-shadow:0 8px 20px rgba(249,115,22,.45)}
+button.ghost{background:transparent}
+button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+#startBtn{flex:1 1 220px}
+
+/* ---------- details: confidence (kept out of the way) ---------- */
+.more{margin-top:14px;border:1px solid var(--line);border-radius:14px;padding:0 14px}
+.more summary{cursor:pointer;font-weight:600;padding:12px 0;color:var(--muted);list-style:none;display:flex;justify-content:space-between;align-items:center}
+.more summary::-webkit-details-marker{display:none}
+.more summary::after{content:"▾";transition:transform .2s}
+.more[open] summary::after{transform:rotate(180deg)}
+.more[open]{padding-bottom:14px}
+.conf-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+.conf-head small{color:var(--muted);font-size:13px}
+.meter{height:12px;background:var(--soft);border-radius:999px;position:relative}
+.meter b{position:absolute;inset:0 auto 0 0;width:0;border-radius:999px;transition:width .15s;background:linear-gradient(90deg,#fdba74,#f97316)}
+.meter u{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1.5px;border-radius:2px;background:var(--ink);opacity:.75}
+.meta{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:14px;margin-top:8px;gap:8px;flex-wrap:wrap}
+.dots{display:flex;gap:5px}
+.dots span{width:11px;height:11px;border-radius:50%;background:var(--line)}
+.dots span.on{background:var(--accent)}
+.top{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;color:var(--muted);font-size:14px;min-height:30px}
+.top span{border:1px solid var(--line);background:var(--soft);border-radius:999px;padding:2px 12px;font-family:var(--deva)}
+
+/* ---------- transcript: the hero, text first ---------- */
+.out{font-family:var(--deva);font-size:var(--out-size);line-height:1.4;min-height:170px;padding:18px 20px;border-radius:16px;
+  background:var(--soft);border:1px solid var(--line);word-break:break-word;color:var(--ink)}
+.out.empty{color:var(--muted);font-size:17px;font-family:var(--font);display:flex;align-items:center}
+.actions{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:14px}
+.grp{display:flex;gap:8px;flex-wrap:wrap}
+.grp button{min-height:42px;padding:8px 14px;font-size:15px}
+
+/* ---------- translate ---------- */
+.switch{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer}
+.switch input{width:17px;height:17px;accent-color:var(--accent);margin:0}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.chip{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:7px 16px;cursor:pointer;
+  min-height:42px;font-weight:600;background:var(--panel);transition:all .15s}
+.chip input{accent-color:var(--accent);width:16px;height:16px;margin:0}
+.chip:hover{border-color:var(--accent)}
+.chip:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent-text)}
+#trBtn{width:100%}
+#results{margin-top:4px}
+.tr{border:1px solid var(--line);background:var(--soft);border-radius:14px;padding:12px 16px 14px;margin-top:12px}
+.tr h3{margin:0 0 2px;font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.tr p{margin:0 0 10px;font-family:var(--deva);font-size:26px;line-height:1.35;font-weight:600}
+.tr p[lang="hi"],.tr p[lang="mr"]{font-size:30px}
+.tr p.err{color:var(--bad);font-size:16px;font-family:var(--font);font-weight:500}
+.tr button{padding:4px 14px;min-height:38px;font-size:14px;border-radius:10px;margin-right:6px}
+
+.tip{margin:18px 2px 0;color:var(--muted);font-size:14px;text-align:center}
+kbd{font:600 12px var(--font);border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px;background:var(--panel)}
+
+/* ---------- "show to others" full screen ---------- */
+.present{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:22px;padding:56px 24px 28px;text-align:center;overflow:auto}
+.present-text{font-family:var(--deva);font-weight:700;font-size:clamp(48px,11vw,150px);line-height:1.25;word-break:break-word;max-width:1400px}
+.present-text.empty{font-size:22px;font-weight:500;color:var(--muted);font-family:var(--font)}
+.present-tr{display:grid;gap:10px;width:min(900px,100%)}
+.present-tr div{border:1px solid var(--line);background:var(--soft);border-radius:14px;padding:10px 16px}
+.present-tr small{display:block;color:var(--muted);font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:12px}
+.present-tr span{font-family:var(--deva);font-size:clamp(26px,4.5vw,44px);font-weight:600}
+.present-x{position:absolute;top:14px;right:14px}
+
+/* ---------- accessibility panel and switches ---------- */
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.a11y{background:var(--soft);border-bottom:1px solid var(--line)}
+.a11y-in{max-width:1200px;margin:0 auto;padding:14px 18px}
+.a11y h2{margin-bottom:10px}
+.a11y-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px 24px}
+.a11y .switch{color:var(--ink);font-size:15px;min-height:40px}
+.a11y .note{margin:10px 0 0;color:var(--muted);font-size:14px;max-width:80ch}
+html[data-big="1"] button,html[data-big="1"] .chip{min-height:60px;font-size:18px;padding-left:22px;padding-right:22px}
+html[data-big="1"] .tools button{min-height:52px;font-size:16px}
+html[data-big="1"] .switch input,html[data-big="1"] .chip input{width:24px;height:24px}
+html[data-calm="1"] *,html[data-calm="1"] *::before,html[data-calm="1"] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:12px;
+  font-size:15px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .2s;box-shadow:0 10px 30px rgba(0,0,0,.3);z-index:70}
 .toast.show{opacity:1}
+@media (max-width:560px){
+  .appbar-in{padding:8px 12px}.brand-t span{display:none}.wrap{padding:14px 12px 32px}
+  .sign{min-width:74px;height:74px;font-size:44px}.actions{flex-direction:column}.grp button{flex:1}
+  .conf-head small{display:none}
+  .idle{padding:10px;gap:3px}.idle .big{font-size:32px}.idle strong{font-size:17px}.idle span{font-size:13px}
+  .tips{margin-top:4px;gap:5px}.tips li{font-size:11px;padding:2px 8px}
+}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div>
-      <h1>Sign to Text</h1>
-      <p class="sub">Show a sign to the camera and read it as text in English, Hindi or Marathi.</p>
-    </div>
-    <div id="model"><i></i><span>Checking model…</span></div>
-  </header>
+<a class="skip" href="#out">Skip to recognised text</a>
 
+<header class="appbar">
+  <div class="appbar-in">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">🤟</div>
+      <div class="brand-t"><h1>Sign to Text</h1><span>ISL → मराठी · हिंदी · English</span></div>
+    </div>
+    <div class="tools">
+      <div id="model"><i></i><span>Checking model…</span></div>
+      <div class="seg" role="group" aria-label="Text size">
+        <button id="sizeDown" aria-label="Smaller text" title="Smaller text">A−</button>
+        <button id="sizeUp" aria-label="Larger text" title="Larger text">A+</button>
+      </div>
+      <button id="contrastBtn" aria-pressed="false" title="High contrast">🌓 Contrast</button>
+      <button id="a11yBtn" aria-expanded="false" aria-controls="a11yPanel" title="More accessibility options">♿ Accessibility</button>
+    </div>
+  </div>
+</header>
+
+<section class="a11y" id="a11yPanel" hidden aria-label="Accessibility options">
+  <div class="a11y-in">
+    <h2>♿ Accessibility options</h2>
+    <div class="a11y-grid">
+      <label class="switch"><input type="checkbox" id="optBig"><span>Larger buttons</span></label>
+      <label class="switch"><input type="checkbox" id="optCalm"><span>Reduce motion</span></label>
+      <label class="switch"><input type="checkbox" id="optRead"><span>Read each new letter aloud</span></label>
+      <label class="switch"><input type="checkbox" id="optBeep"><span>Sound when a letter is added</span></label>
+      <label class="switch"><input type="checkbox" id="optVibe"><span>Vibrate when a letter is added</span></label>
+    </div>
+    <p class="note">Text size (A− / A+) and High contrast are in the top bar. Screen readers are told about every added or deleted letter. Your choices are remembered on this device.</p>
+  </div>
+</section>
+
+<div class="wrap">
   <main>
     <section class="card" aria-label="Camera">
+      <div class="card-head"><h2>📷 Camera</h2></div>
       <div class="stage" id="stage" data-state="WAITING">
         <video id="video" playsinline muted></video>
         <canvas id="overlay"></canvas>
         <div class="idle" id="idle">
+          <div class="big" aria-hidden="true">👋</div>
           <strong>Camera is off</strong>
           <span>Press Start camera and keep one hand in view, about an arm’s length away.</span>
+          <ul class="tips"><li>☀️ Good light</li><li>🧱 Plain background</li><li>✋ One hand in view</li></ul>
         </div>
         <div class="state" id="state" hidden>Waiting</div>
-        <div class="sign" id="sign" aria-live="polite">–</div>
+        <div class="signbox" id="signbox"><div class="sign" id="sign" aria-live="polite">–</div></div>
       </div>
       <p class="msg" id="msg" aria-live="polite">Start the camera to begin.</p>
-      <div class="meter" aria-hidden="true"><b id="conf"></b><u id="thr" style="left:70%"></u></div>
-      <div class="meta"><span id="confTxt">Confidence 0%</span><span class="dots" id="dots" aria-label="Frames read"></span></div>
-      <div class="top" id="top"></div>
       <div class="row">
         <button class="primary" id="startBtn">Start camera</button>
       </div>
+      <details class="more">
+        <summary>How sure is it?</summary>
+        <div class="conf-head"><strong id="confTxt">Confidence 0%</strong><small>the line marks the level needed</small></div>
+        <div class="meter" aria-hidden="true"><b id="conf"></b><u id="thr" style="left:70%"></u></div>
+        <div class="meta"><span>Frames read</span><span class="dots" id="dots" aria-label="Frames read"></span></div>
+        <div class="top" id="top"></div>
+      </details>
     </section>
 
-    <section class="card" aria-label="Recognised text">
-      <h2>Recognised text</h2>
-      <div class="out empty" id="out" lang="mr">Letters you sign will appear here.</div>
-      <div class="row">
-        <button id="spaceBtn">Space</button>
-        <button id="backBtn">Delete last</button>
-        <button id="clearBtn">Clear all</button>
-      </div>
+    <div class="stack">
+      <section class="card" aria-label="Recognised text">
+        <div class="card-head"><h2>✍️ Recognised text</h2><span class="badge">मराठी</span></div>
+        <div class="out empty" id="out" lang="mr">Letters you sign will appear here.</div>
+        <div class="actions">
+          <div class="grp">
+            <button id="spaceBtn">Space</button>
+            <button id="backBtn">⌫ Delete last</button>
+            <button id="clearBtn" class="ghost">Clear all</button>
+          </div>
+          <div class="grp">
+            <button id="copyBtn" disabled>📋 Copy</button>
+            <button id="speakBtn" disabled>🔊 Speak</button>
+            <button id="presentBtn" disabled>⛶ Show to others</button>
+          </div>
+        </div>
+      </section>
 
-      <h2 style="margin-top:22px">Translate</h2>
-      <div class="chips" id="chips"></div>
-      <div class="row" style="margin-top:0">
+      <section class="card" aria-label="Translate">
+        <div class="card-head">
+          <h2>🌐 Translate</h2>
+          <label class="switch"><input type="checkbox" id="autoTr"><span>Auto-translate</span></label>
+        </div>
+        <div class="chips" id="chips"></div>
         <button class="primary" id="trBtn" disabled>Translate text</button>
-      </div>
-      <div id="results"></div>
-    </section>
+        <div id="results"></div>
+      </section>
+    </div>
   </main>
+  <p class="tip">Shortcuts: <kbd>Space</kbd> adds a space, <kbd>Backspace</kbd> deletes the last letter, <kbd>Esc</kbd> closes full screen.</p>
 </div>
+
+<div class="present" id="present" hidden role="dialog" aria-modal="true" aria-label="Recognised text, full screen">
+  <button class="present-x" id="presentClose">✕ Close</button>
+  <div class="present-text" id="presentText" lang="mr"></div>
+  <div class="present-tr" id="presentTr"></div>
+  <button class="primary" id="presentSpeak">🔊 Speak</button>
+</div>
+<div class="sr" id="announce" role="status" aria-live="polite" aria-atomic="true"></div>
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
@@ -269,6 +445,190 @@ $("trBtn").onclick = async()=>{
 /* keyboard: Backspace deletes the last letter when focus is not on a control */
 document.addEventListener("keydown",e=>{ if(e.code==="Backspace"&&e.target===document.body){ e.preventDefault(); $("backBtn").click(); } });
 loadInfo();
+</script>
+<script>
+/* Extra features: accessibility options, hand skeleton, confidence ring, copy / speak / show-to-others,
+   optional auto-translate. This block only adds things around the script above; it does not change how
+   recognition, the server calls or translation work. */
+(function(){
+  "use strict";
+  const g = id => document.getElementById(id);
+  const root = document.documentElement;
+  const store = {
+    get(k, d){ try{ const v = localStorage.getItem(k); return v === null ? d : v; }catch(e){ return d; } },
+    set(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
+  };
+  const note = m => { try{ toast(m); }catch(e){} };
+  function announce(m){ const a = g("announce"); a.textContent = ""; setTimeout(() => { a.textContent = m; }, 40); }
+  const pref = q => !!(window.matchMedia && window.matchMedia(q).matches);
+
+  /* ---------- text size ---------- */
+  const SIZES = [28, 34, 40, 48, 58, 70];
+  let si = parseInt(store.get("isl.size", "2"), 10);
+  if(isNaN(si) || si < 0 || si >= SIZES.length) si = 2;
+  function applySize(){
+    root.style.setProperty("--out-size", SIZES[si] + "px");
+    g("sizeDown").disabled = si === 0; g("sizeUp").disabled = si === SIZES.length - 1;
+    store.set("isl.size", String(si));
+  }
+  g("sizeDown").onclick = () => { if(si > 0){ si--; applySize(); announce("Text size " + (si + 1) + " of " + SIZES.length); } };
+  g("sizeUp").onclick = () => { if(si < SIZES.length - 1){ si++; applySize(); announce("Text size " + (si + 1) + " of " + SIZES.length); } };
+  applySize();
+
+  /* ---------- high contrast (starts from the device setting if nothing was chosen) ---------- */
+  function setContrast(on){
+    if(on) root.setAttribute("data-contrast", "high"); else root.removeAttribute("data-contrast");
+    g("contrastBtn").setAttribute("aria-pressed", on ? "true" : "false");
+  }
+  setContrast(store.get("isl.contrast", pref("(prefers-contrast: more)") ? "1" : "0") === "1");
+  g("contrastBtn").onclick = () => {
+    const on = root.getAttribute("data-contrast") !== "high";
+    setContrast(on); store.set("isl.contrast", on ? "1" : "0"); announce(on ? "High contrast on" : "High contrast off");
+  };
+
+  /* ---------- accessibility panel ---------- */
+  g("a11yBtn").onclick = () => {
+    const p = g("a11yPanel"), open = p.hidden;
+    p.hidden = !open; g("a11yBtn").setAttribute("aria-expanded", open ? "true" : "false");
+  };
+  function bindOpt(id, key, def, apply){
+    const el = g(id); el.checked = store.get(key, def ? "1" : "0") === "1"; apply(el.checked);
+    el.onchange = () => { store.set(key, el.checked ? "1" : "0"); apply(el.checked); };
+  }
+  const flag = (name, on) => { if(on) root.setAttribute(name, "1"); else root.removeAttribute(name); };
+  bindOpt("optBig",  "isl.big",  false, on => flag("data-big", on));
+  bindOpt("optCalm", "isl.calm", pref("(prefers-reduced-motion: reduce)"), on => flag("data-calm", on));
+  bindOpt("optRead", "isl.read", false, () => {});
+  bindOpt("optBeep", "isl.beep", false, () => {});
+  bindOpt("optVibe", "isl.vibe", false, () => {});
+
+  /* ---------- confidence ring around the current sign ---------- */
+  function ring(){
+    const p = parseFloat(g("conf").style.width) || 0, t = parseFloat(g("thr").style.left) || 70, b = g("signbox");
+    b.style.setProperty("--p", p); b.dataset.ok = p >= t ? "1" : "0";
+  }
+  ["conf", "thr"].forEach(id => new MutationObserver(ring).observe(g(id), {attributes: true, attributeFilter: ["style"]}));
+
+  /* ---------- hand skeleton on the camera picture (21 MediaPipe points) ---------- */
+  const BONES = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+  window.drawBox = function(box){
+    const v = g("video"), o = g("overlay"); o.width = v.videoWidth || 640; o.height = v.videoHeight || 480;
+    const c = o.getContext("2d"), W = o.width, H = o.height; c.clearRect(0, 0, W, H); if(!box) return;
+    c.lineWidth = 3; c.strokeStyle = "#fb923c";
+    const x = box[0] * W, y = box[1] * H, w = (box[2] - box[0]) * W, h = (box[3] - box[1]) * H;
+    c.beginPath(); if(c.roundRect) c.roundRect(x, y, w, h, 14); else c.rect(x, y, w, h); c.stroke();
+    const lm = (typeof landmarks !== "undefined") ? landmarks : null;
+    if(lm && lm.length === 21){
+      c.strokeStyle = "rgba(255,255,255,.9)"; c.lineWidth = 3; c.lineCap = "round";
+      BONES.forEach(([a, b]) => { c.beginPath(); c.moveTo(lm[a].x * W, lm[a].y * H); c.lineTo(lm[b].x * W, lm[b].y * H); c.stroke(); });
+      lm.forEach((p, i) => { c.beginPath(); c.arc(p.x * W, p.y * H, i % 4 === 0 ? 5 : 3.5, 0, 6.2832); c.fillStyle = i % 4 === 0 ? "#ffffff" : "#fb923c"; c.fill(); });
+    }
+  };
+
+  /* ---------- speech helpers ---------- */
+  function speechLang(){
+    const vs = ("speechSynthesis" in window) ? speechSynthesis.getVoices() : [];
+    const has = l => vs.some(v => v.lang && v.lang.toLowerCase().startsWith(l));
+    return has("mr") ? "mr-IN" : (has("hi") ? "hi-IN" : "mr-IN");
+  }
+  function speak(text, quiet){
+    if(!("speechSynthesis" in window)){ if(!quiet) note("Speech is not supported in this browser."); return; }
+    const lang = speechLang();
+    if(lang !== "mr-IN" && !quiet) note("No Marathi voice found, reading with a Hindi voice.");
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text); u.lang = lang; speechSynthesis.speak(u);
+  }
+  let ac = null;
+  function beep(){
+    try{
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      const o = ac.createOscillator(), gn = ac.createGain();
+      o.frequency.value = 880; gn.gain.value = .08; o.connect(gn); gn.connect(ac.destination);
+      o.start(); o.stop(ac.currentTime + .09);
+    }catch(e){}
+  }
+
+  /* ---------- the recognised text: buttons, announcements, feedback ---------- */
+  const textNow = () => { const o = g("out"); return o.classList.contains("empty") ? "" : o.textContent; };
+  g("copyBtn").onclick = () => { const t = textNow(); if(!t) return;
+    (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => note("Copied"), () => note("Could not copy. Select the text and copy it by hand.")); };
+  g("speakBtn").onclick = () => { const t = textNow(); if(t) speak(t, false); };
+
+  let prev = "";
+  function onText(){
+    const t = textNow(), has = t.trim().length > 0;
+    ["copyBtn", "speakBtn", "presentBtn"].forEach(id => { g(id).disabled = !has; });
+    if(!g("present").hidden) renderPresent();
+    if(t.length > prev.length && t.startsWith(prev)){
+      const added = t.slice(prev.length), shown = added.trim();
+      announce("Added " + (shown || "a space"));
+      if(g("optRead").checked && shown) speak(shown, true);
+      if(g("optBeep").checked) beep();
+      if(g("optVibe").checked && navigator.vibrate) navigator.vibrate(40);
+    } else if(t.length < prev.length){
+      announce(t ? "Deleted the last letter" : "Text cleared");
+    }
+    prev = t; scheduleAuto();
+  }
+  new MutationObserver(onText).observe(g("out"), {childList: true, characterData: true, subtree: true});
+
+  /* ---------- "Show to others": the text in very large type ---------- */
+  function renderPresent(){
+    const t = textNow(), el = g("presentText");
+    el.textContent = t || "Nothing has been signed yet."; el.classList.toggle("empty", !t);
+    const box = g("presentTr"); box.innerHTML = "";
+    document.querySelectorAll("#results .tr").forEach(d => {
+      const h = d.querySelector("h3"), p = d.querySelector("p");
+      if(!p || p.classList.contains("err")) return;
+      const row = document.createElement("div"), s = document.createElement("small"), sp = document.createElement("span");
+      s.textContent = h ? h.textContent : ""; sp.textContent = p.textContent; if(p.lang) sp.lang = p.lang;
+      row.append(s, sp); box.appendChild(row);
+    });
+  }
+  function openPresent(){
+    renderPresent(); g("present").hidden = false; document.body.style.overflow = "hidden"; g("presentClose").focus();
+    try{ const r = g("present").requestFullscreen && g("present").requestFullscreen(); if(r && r.catch) r.catch(() => {}); }catch(e){}
+    announce("Full screen text view opened");
+  }
+  function closePresent(){
+    g("present").hidden = true; document.body.style.overflow = "";
+    try{ if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen(); }catch(e){}
+    setTimeout(() => g("presentBtn").focus(), 80);   /* after the browser has left full screen */
+    announce("Full screen text view closed");
+  }
+  g("presentBtn").onclick = openPresent;
+  g("presentClose").onclick = closePresent;
+  g("presentSpeak").onclick = () => { const t = textNow(); if(t) speak(t, false); };
+  document.addEventListener("fullscreenchange", () => { if(!document.fullscreenElement && !g("present").hidden) closePresent(); });
+  new MutationObserver(() => { if(!g("present").hidden) renderPresent(); }).observe(g("results"), {childList: true, subtree: true, characterData: true});
+
+  /* ---------- keyboard ---------- */
+  document.addEventListener("keydown", e => {
+    const open = !g("present").hidden;
+    if(open && e.key === "Escape"){ closePresent(); return; }
+    if(open && e.key === "Tab"){            /* keep focus inside the full screen view */
+      const items = [g("presentClose"), g("presentSpeak")], i = items.indexOf(document.activeElement);
+      e.preventDefault(); items[(i + (e.shiftKey ? items.length - 1 : 1)) % items.length].focus(); return;
+    }
+    if(!open && e.code === "Space" && e.target === document.body){ e.preventDefault(); g("spaceBtn").click(); }
+  });
+
+  /* ---------- optional auto-translate (off by default: it uses the internet) ---------- */
+  bindOpt("autoTr", "isl.auto", false, () => {});
+  let autoTimer = null;
+  function scheduleAuto(tries){
+    clearTimeout(autoTimer);
+    if(!g("autoTr").checked || !textNow().trim()) return;
+    autoTimer = setTimeout(() => {
+      const b = g("trBtn");
+      if(b.disabled){ if((tries || 0) < 6) scheduleAuto((tries || 0) + 1); return; }
+      b.click();
+    }, 1200);
+  }
+  g("autoTr").addEventListener("change", () => { if(g("autoTr").checked) scheduleAuto(); });
+
+  onText();
+})();
 </script>
 </body>
 </html>
